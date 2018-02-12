@@ -2,7 +2,7 @@
 
 import os
 
-valid_resource_types = {'collectionresource': 'CollectionResource'}
+valid_resource_types ={'compositeresource': 'CompositeResource'}
 all_resource_types = {'collectionresource': 'CollectionResource',
                         'compositeresource': 'CompositeResource',
                         'genericresource': 'GenericResource',
@@ -127,4 +127,4 @@ class Resource(object):
         print('Discoverable: %s' % self.discoverable)
         print('Sharable: %s' % self.shareable)
         print('Files: %s' % ','.join(self.files))
-        print('Files to Unzip: %s' % ','.join(self.unzip_files))
+#        print('Files to Unzip: %s' % ','.join(self.unzip_files))

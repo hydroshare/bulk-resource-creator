@@ -115,8 +115,6 @@ def __parse_template(template):
     return resources
 
 
-
-
 def __createResources(resource_list):
     resources_created = {}
     errors = {}
@@ -136,12 +134,12 @@ def __createResources(resource_list):
                 hs.addResourceFile(resid, f)
                 print('done')
 
-            for f in r.unzip_files:
-                print('  decompressing file: %s...' % f, end='')
-                options = {"zip_with_rel_path": f,
-                           "remove_original_zip": False}
-                hs.resource(resid).functions.unzip(options)
-                print('done')
+#            for f in r.unzip_files:
+#                print('  decompressing file: %s...' % f, end='')
+#                options = {"zip_with_rel_path": f,
+#                           "remove_original_zip": False}
+#                hs.resource(resid).functions.unzip(options)
+#                print('done')
 
             # set sharing status
             print('  setting sharing status...', end='')
@@ -159,7 +157,6 @@ def __createResources(resource_list):
             # set science metadata
             if len(r.authors) > 0:
                 print('  setting science metadata...', end='')
-#                import pdb; pdb.set_trace()
                 hs.updateScienceMetadata(resid,
                                          metadata={'creators': r.authors})
                 print('done')
@@ -182,13 +179,11 @@ def __exit():
     print(50*'-' + '\n')
     sys.exit()
 
-def run_interactive():
-    default_host = "www.hydroshare.org"
-    host = input('Enter host address (default: www.hydroshare.org): ') or default_host
+def __auth_user(username, host='www.hydroshare.org'):
+
     auth_success = False
     attempt = 1
     while not auth_success:
-        username = input('Please enter username: ')
         hs = __connect(username, host)
         try:
             hs.getUserInfo()
@@ -199,6 +194,16 @@ def run_interactive():
         if attempt > 3:
             __exit()
     print('  Authorization Successful')
+    return hs
+
+
+def run_interactive():
+
+    default_host = "www.hydroshare.org"
+    host = input('Enter host address (default: www.hydroshare.org): ') or default_host
+    username = input('Please enter username: ')
+
+    hs = __auth_user(username, host)
 
     template_exists = False
     while not template_exists:
@@ -215,8 +220,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='HydroShare bulk resource '
                                      'creator tool.')
-    parser.add_argument('-t', '--template', help='bulk insert template file',
-                        required=True)
+    parser.add_argument('-t', '--template', help='bulk insert template file')
     parser.add_argument('-a', '--address', help='hydroshare host address')
     parser.add_argument('-u', '--user', help='hydroshare username')
     parser.add_argument('-i', '--interactive-mode', action='store_true',
@@ -230,24 +234,40 @@ if __name__ == "__main__":
 
     # run interactive mode
     if args.interactive_mode:
+        print('\n'+50 * '-')
         print('Interactive Mode')
-        host, hs, template = run_interactive(template)
+        print(50 * '-' + '\n')
+        host, hs, template = run_interactive()
     elif args.debug:
-        print('\nRunning in Debug Mode')
-        p.validate_template(template)
+        print('\n'+50 * '-')
+        print('Running in Debug Mode')
+        print(50 * '-' + '\n')
+        res = p.parse_template(template)
+        p.validate(res)
+        print('\nTemplate Summary')
+        for r in res:
+            print(50*'-')
+            r.display_summary()
+        print(50*'-')
         sys.exit()
     else:
+        print('\n'+50 * '-')
+        print('Running in Standard Mode')
+        print(50 * '-' + '\n')
+
         if None in (args.address, args.user):
-            print('Missing one of the required arguments for non-interactive '
+            print('\nERROR: Missing one of the required arguments for non-interactive '
                   'mode: [ADDRESS], [USER]')
             parser.print_help()
+            sys.exit()
+        else:
+            hs = __auth_user(args.user, args.address)
 
-
-
-    import pdb; pdb.set_trace() 
+    # parse template
+    resources = p.parse_template(template)
 
     # run template validation
-    failed = p.validate_template(template)
+    failed = p.validate(resources)
 
     if len(failed) > 0:
         res = input('Would you like to continue [Y/n]? ')
@@ -283,7 +303,7 @@ if __name__ == "__main__":
         print('The following resources were created:')
         print(50*'-')
         for r, t in created.items():
-            print('\n  %s\n  %s/%s' % (t, host, r))
+            print('\n  %s\n  %s/%s' % (t, args.address, r))
 
     __exit()
 
