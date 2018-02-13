@@ -95,7 +95,7 @@ def parse_template(template):
 
         # skip the __vocab sheet
         if sheet.name[0:2] == '__':
-            print('  sheet %d: skip' % i)
+            print('  sheet %d: skipped' % i)
             continue
 
         print('  sheet %d: read' % i)
@@ -104,12 +104,12 @@ def parse_template(template):
 
         # general metadata
         rs = sections['General Metadata']['start']
-        title = sheet.cell_value(rowx=rs, colx=1)
+        resource_title = sheet.cell_value(rowx=rs, colx=1)
         abstract = sheet.cell_value(rowx=rs+1, colx=1)
         keywords = [k.strip() for k in
                     sheet.cell_value(rowx=rs+2, colx=1).split()
                     if k != '']
-        type = sheet.cell_value(rowx=rs+3, colx=1)
+        resource_type = sheet.cell_value(rowx=rs+3, colx=1)
 
         # sharing status
         rs = sections['Sharing Status']['start']
@@ -117,11 +117,11 @@ def parse_template(template):
         discoverable = sheet.cell_value(rowx=rs+1, colx=1)
         shareable = sheet.cell_value(rowx=rs+2, colx=1)
 
-        # file contents
+        # resource content
         files = []
         rs = sections['Resource Content']['start']
         re = sections['Resource Content']['end']
-        for row in range(re, re):
+        for row in range(rs, re):
             path = sheet.cell_value(rowx=row, colx=1)
             type = sheet.cell_value(rowx=row, colx=7)
             unzip = sheet.cell_value(rowx=row, colx=9)
@@ -134,10 +134,21 @@ def parse_template(template):
         re = sections['File Metadata']['end']
         for row in range(rs, re):
             path = sheet.cell_value(rowx=row, colx=1)
-            key = sheet.cell_value(rowx=row, colx=5)
-            if path != '' and key != '':
+            title = sheet.cell_value(rowx=row, colx=5)
+            start_dt = get_value(sheet, row, 7)
+            end_dt = get_value(sheet, row, 8)
+            location = sheet.cell_value(rowx=row, colx=9)
+            coverage = sheet.cell_value(rowx=row, colx=11)
+            spatial_def = sheet.cell_value(rowx=row, colx=13)
+            if path != '':
                 value = get_value(sheet, row, 7)
-                file_meta.append(dict(path=path, key=key, value=value))
+                file_meta.append(dict(path=path,
+                                 title=title,
+                                 start_dt=start_dt,
+                                 end_dt=end_dt,
+                                 location=location,
+                                 coverage=coverage,
+                                 spatial_def=spatial_def))
 
         # science metadata
         authors = []
@@ -169,7 +180,7 @@ def parse_template(template):
                 value = get_value(sheet, row, 3)
                 custom_metadata[key] = value
 
-        r = Resource(title, abstract, keywords, type, files,
+        r = Resource(resource_title, abstract, keywords, resource_type, files,
                      public, discoverable, shareable, authors,
                      custom_metadata, file_meta)
         resources.append(r)
