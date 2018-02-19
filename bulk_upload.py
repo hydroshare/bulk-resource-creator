@@ -8,7 +8,7 @@ import time
 import getpass
 from resource import Resource
 from datetime import datetime as dt
-import parse_template as p
+import parse as p
 import argparse
 import connect
 

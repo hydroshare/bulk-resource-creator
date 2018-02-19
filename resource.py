@@ -18,7 +18,7 @@ all_resource_types = {'collectionresource': 'CollectionResource',
                       'scriptresource': 'ScriptResource',
                       'timeseriesresource': 'TimeSeriesResource',
                       'toolresource': 'ToolResource'}
-valid_file_types = {'netcdf:': 'NetCDF',
+valid_file_types = {'netcdf': 'NetCDF',
                     'georaster': 'GeoRaster',
                     'geofeature': 'GeoFeature',
                     '': None}
@@ -83,11 +83,11 @@ class Resource(object):
             if not os.path.exists(f['path']):
                 self.validation_text.append('Could not find file: %s'
                                             % f['path'])
-            if f['type'] not in valid_file_types:
+            if f['type'].lower() not in valid_file_types:
                 self.validation_text.append('%s is not a valid file type'
                                             % f['type'])
             else:
-                f['type'] = valid_file_types[f['type']]
+                f['type'] = valid_file_types[f['type'].lower()]
 
         file_paths = [f['path'] for f in self.files]
         for f in self.filemeta:
@@ -98,7 +98,7 @@ class Resource(object):
             if f['coverage'] != '':
                 if f['coverage'].lower() not in ['point', 'box']:
                     self.validation_text.append('invalid coverage: %s' %
-                                                f['converage'])
+                                                f['coverage'])
                 try:
                     spatialdef = dict(item.split('=') for item in
                                       f['spatial_def'].split())
@@ -111,15 +111,17 @@ class Resource(object):
                 if len(spatialdef.keys()) > 0:
                     if f['coverage'].lower() == 'point':
                         if 'lat' not in spatialdef or 'lon' not in spatialdef:
-                            self.validation_text.append('invalid spatial definition '
-                                                 'for type "point"')
+                            self.validation_text.append('invalid spatial '
+                                                        'definition '
+                                                        'for type "point"')
                     if f['coverage'].lower() == 'box':
                         if 'north_lat' not in spatialdef or \
                            'south_lat' not in spatialdef or \
                            'east_lon' not in spatialdef or \
                            'west_lat' not in spatialdef:
-                            self.validation_text.append('invalid spatial definition '
-                                                 'for type "box"')
+                            self.validation_text.append('invalid spatial '
+                                                        'definition '
+                                                        'for type "box"')
                 else:
                     self.validation_text.append('spatial definition is '
                                                 'required if coverage type '
