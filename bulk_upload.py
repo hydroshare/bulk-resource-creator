@@ -6,113 +6,11 @@ import sys
 import xlrd
 import time
 import getpass
-from hs_restclient import HydroShare, HydroShareAuthBasic, HydroShareHTTPException
 from resource import Resource
 from datetime import datetime as dt
 import parse_template as p
 import argparse
-
-
-def __connect(username, host):
-    u = username
-    p = getpass.getpass('Password:')
-    auth = HydroShareAuthBasic(username=u, password=p)
-    return HydroShare(hostname=host, auth=auth)
-
-
-def __parse_template(template):
-    resources = []
-    data = xlrd.open_workbook(template)
-
-    def get_value(sheet, row, col):
-
-        value_type = sheet.cell_type(rowx=row, colx=col)
-        value = sheet.cell_value(rowx=row, colx=col)
-        if value_type == xlrd.XL_CELL_DATE:
-            return dt(*xlrd.xldate_as_tuple(value, data.datemode)).isoformat()
-        else:
-            return value
-
-    for i in range(data.nsheets):
-        sheet = data.sheet_by_index(i)
-
-        # skip the __vocab sheet
-        if sheet.name[0:2] == '__':
-            continue
-
-        # general metadata
-        title = sheet.cell_value(rowx=4, colx=1)
-        abstract = sheet.cell_value(rowx=5, colx=1)
-        keywords = [k.strip() for k in
-                    sheet.cell_value(rowx=6, colx=1).split()
-                    if k != '']
-        type = sheet.cell_value(rowx=7, colx=1)
-
-        # sharing status
-        public = sheet.cell_value(rowx=10, colx=1)
-        discoverable = sheet.cell_value(rowx=11, colx=1)
-        shareable = sheet.cell_value(rowx=12, colx=1)
-
-        # file contents
-        files = []
-        for row in range(16, 26):
-            path = sheet.cell_value(rowx=row, colx=1)
-            type = sheet.cell_value(rowx=row, colx=7)
-            unzip = sheet.cell_value(rowx=row, colx=9)
-            if path != '':
-                files.append(dict(path=path, type=type, unzip=unzip))
-
-        # file metadata
-        file_meta = []
-        for row in range(29, 39):
-            path = sheet.cell_value(rowx=row, colx=1)
-            key = sheet.cell_value(rowx=row, colx=5)
-            if path != '' and key != '':
-                value = get_value(sheet, row, 7)
-                file_meta.append(dict(path=path, key=key, value=value))
-
-        # science metadata
-        authors = []
-        for row in range(42, 52):
-            name = sheet.cell_value(rowx=row, colx=1)
-            org = sheet.cell_value(rowx=row, colx=3)
-            email = sheet.cell_value(rowx=row, colx=5)
-            addr = sheet.cell_value(rowx=row, colx=7)
-            phone = sheet.cell_value(rowx=row, colx=11)
-
-            # save author metadata if provided.
-            if name != '':
-                authors.append(dict(name=name,
-                                    organization=org,
-                                    email=email,
-                                    address=addr,
-                                    phone=phone))
-
-        # extended custom metadata
-        custom_metadata = {}
-        for row in range(57, 67):
-            key = sheet.cell_value(rowx=row, colx=1)
-
-            if key != '':
-                value = get_value(sheet, row, 3)
-                custom_metadata[key] = value
-
-        # file custom metadata
-        file_metadata = []
-        for row in range(57, 67):
-            key = sheet.cell_value(rowx=row, colx=7)
-            path = sheet.cell_value(rowx=row, colx=9)
-            if path != '' and key != '':
-                value = get_value(sheet, row, 8)
-                file_metadata.append(dict(path=path, key=key, value=value))
-
-        r = Resource(title, abstract, keywords, type, files,
-                     public, discoverable, shareable, authors,
-                     custom_metadata, file_metadata)
-
-        resources.append(r)
-
-    return resources
+import connect
 
 
 def __createResources(resource_list):
@@ -179,22 +77,14 @@ def __exit():
     print(50*'-' + '\n')
     sys.exit()
 
+
 def __auth_user(username, host='www.hydroshare.org'):
 
-    auth_success = False
-    attempt = 1
-    while not auth_success:
-        hs = __connect(username, host)
-        try:
-            hs.getUserInfo()
-            auth_success = True
-        except HydroShareHTTPException:
-            print('  Authorization Failed - Attempt %d' % attempt)
-        attempt += 1
-        if attempt > 3:
-            __exit()
-    print('  Authorization Successful')
-    return hs
+    hs = connect.authenticate(username, host, 3)
+    if hs:
+        return hs
+    else:
+        __exit()
 
 
 def run_interactive():
