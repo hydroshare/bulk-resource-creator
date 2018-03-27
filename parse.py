@@ -110,39 +110,36 @@ def parse_template(template):
                     sheet.cell_value(rowx=rs+2, colx=1).split()
                     if k != '']
         resource_type = sheet.cell_value(rowx=rs+3, colx=1)
-
-        # sharing status
-        rs = sections['Sharing Status']['start']
-        public = sheet.cell_value(rowx=rs, colx=1)
-        discoverable = sheet.cell_value(rowx=rs+1, colx=1)
-        shareable = sheet.cell_value(rowx=rs+2, colx=1)
+        sharing_status = sheet.cell_value(rowx=rs+4, colx=1)
+        shareable = sheet.cell_value(rowx=rs+5, colx=1)
 
         # resource content
         files = []
         rs = sections['Resource Content']['start']
         re = sections['Resource Content']['end']
         for row in range(rs, re):
+            uid = sheet.cell_value(rowx=row, colx=0)
             path = sheet.cell_value(rowx=row, colx=1)
             type = sheet.cell_value(rowx=row, colx=7)
             unzip = sheet.cell_value(rowx=row, colx=9)
             if path != '':
-                files.append(dict(path=path, type=type, unzip=unzip))
+                files.append(dict(uid=uid, path=path, type=type, unzip=unzip))
 
         # file metadata
         file_meta = []
         rs = sections['File Metadata']['start']
         re = sections['File Metadata']['end']
         for row in range(rs, re):
-            path = sheet.cell_value(rowx=row, colx=1)
+            uid = sheet.cell_value(rowx=row, colx=1)
             title = sheet.cell_value(rowx=row, colx=5)
             start_dt = get_value(sheet, row, 7)
             end_dt = get_value(sheet, row, 8)
             location = sheet.cell_value(rowx=row, colx=9)
             coverage = sheet.cell_value(rowx=row, colx=11)
             spatial_def = sheet.cell_value(rowx=row, colx=13)
-            if path != '':
+            if uid != '':
                 value = get_value(sheet, row, 7)
-                file_meta.append(dict(path=path,
+                file_meta.append(dict(uid=uid,
                                  title=title,
                                  start_dt=start_dt,
                                  end_dt=end_dt,
@@ -181,7 +178,7 @@ def parse_template(template):
                 custom_metadata[key] = value
 
         r = Resource(resource_title, abstract, keywords, resource_type, files,
-                     public, discoverable, shareable, authors,
+                     sharing_status, shareable, authors,
                      custom_metadata, file_meta)
         resources.append(r)
 

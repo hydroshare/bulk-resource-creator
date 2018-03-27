@@ -11,64 +11,8 @@ from datetime import datetime as dt
 import parse as p
 import argparse
 import connect
-
-
-def __createResources(resource_list):
-    resources_created = {}
-    errors = {}
-    for r in resource_list:
-
-        resid = None
-        st = time.time()
-        try:
-            print('\nCreating resource: %s' % r.title)
-            resid = hs.createResource(resource_type=r.type,
-                                      title=r.title,
-                                      abstract=r.abstract,
-                                      keywords=r.keywords)
-
-            for f in r.files:
-                print('  uploading file: %s...' % f.split('/')[-1], end='')
-                hs.addResourceFile(resid, f)
-                print('done')
-
-#            for f in r.unzip_files:
-#                print('  decompressing file: %s...' % f, end='')
-#                options = {"zip_with_rel_path": f,
-#                           "remove_original_zip": False}
-#                hs.resource(resid).functions.unzip(options)
-#                print('done')
-
-            # set sharing status
-            print('  setting sharing status...', end='')
-            hs.resource(resid).public(r.public)
-            hs.resource(resid).discoverable(r.discoverable)
-            hs.resource(resid).shareable(r.shareable)
-            print('done')
-
-            # set custom metadata
-            if len(r.custom_metadata.keys()) > 0:
-                print('  setting custom metadata...', end='')
-                hs.resource(resid).scimeta.custom(r.custom_metadata)
-                print('done')
-
-            # set science metadata
-            if len(r.authors) > 0:
-                print('  setting science metadata...', end='')
-                hs.updateScienceMetadata(resid,
-                                         metadata={'creators': r.authors})
-                print('done')
-
-            resources_created[resid] = r.title
-
-        except Exception as e:
-            print('\n  ERROR ENCOUNTERED')
-            if resid is not None:
-                errors[resid] = {'error': e, 'title': r.title}
-
-        print('  elapsed time %3.5f seconds' % (time.time() - st))
-
-    return resources_created, errors
+import create
+import requests
 
 
 def __exit():
@@ -78,9 +22,8 @@ def __exit():
     sys.exit()
 
 
-def __auth_user(username, host='www.hydroshare.org'):
-
-    hs = connect.authenticate(username, host, 3)
+def __auth_user(username, host='www.hydroshare.org', ssl_verify=True):
+    hs = connect.authenticate(username, host, 3, ssl_verify)
     if hs:
         return hs
     else:
@@ -113,6 +56,8 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--template', help='bulk insert template file')
     parser.add_argument('-a', '--address', help='hydroshare host address')
     parser.add_argument('-u', '--user', help='hydroshare username')
+    parser.add_argument('-s', '--no-ssl-verify', action='store_true',
+                        help='turn off ssl verification')
     parser.add_argument('-i', '--interactive-mode', action='store_true',
                         help='run in interactive mode')
     parser.add_argument('-d', '--debug', action='store_true',
@@ -121,7 +66,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     template = args.template
-
+    
     # run interactive mode
     if args.interactive_mode:
         print('\n'+50 * '-')
@@ -139,6 +84,7 @@ if __name__ == "__main__":
             print(50*'-')
             r.display_summary()
         print(50*'-')
+        import pdb; pdb.set_trace()
         sys.exit()
     else:
         print('\n'+50 * '-')
@@ -151,7 +97,11 @@ if __name__ == "__main__":
             parser.print_help()
             sys.exit()
         else:
-            hs = __auth_user(args.user, args.address)
+#            import pdb; pdb.set_trace()
+            ssl = False if args.no_ssl_verify else True
+            if not ssl:
+                requests.packages.urllib3.disable_warnings()
+            hs = __auth_user(args.user, args.address, ssl)
 
     # parse template
     resources = p.parse_template(template)
@@ -171,7 +121,7 @@ if __name__ == "__main__":
     print('\n' + 50*'-')
     print('Begin creating HydroShare resources')
     print(50*'-')
-    created, errors = __createResources(resources)
+    created, errors = create.create_many(hs, resources)
 
     if len(errors) > 0:
         print('\n' + 50*'-')
@@ -193,7 +143,7 @@ if __name__ == "__main__":
         print('The following resources were created:')
         print(50*'-')
         for r, t in created.items():
-            print('\n  %s\n  %s/%s' % (t, args.address, r))
+            print('\n  %s\n  %s/resource/%s' % (t, args.address, r))
 
     __exit()
 

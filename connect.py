@@ -7,11 +7,11 @@ from hs_restclient import (HydroShare,
                            HydroShareHTTPException)
 
 
-def __connect(username, host='www.hydroshare.org'):
+def __connect(username, host='www.hydroshare.org', verify=True):
     u = username
     p = getpass.getpass('Password:')
     auth = HydroShareAuthBasic(username=u, password=p)
-    return HydroShare(hostname=host, auth=auth)
+    return HydroShare(hostname=host, auth=auth, verify=verify)
 
 
 def connect():
@@ -19,12 +19,13 @@ def connect():
     return __connect(u)
 
 
-def authenticate(username, host='www.hydroshare.org', tries=3):
+def authenticate(username, host='www.hydroshare.org', tries=3, 
+                 ssl_verification=True):
 
     auth_success = False
     attempt = 1
     while not auth_success:
-        hs = __connect(username, host)
+        hs = __connect(username, host, verify=ssl_verification)
         try:
             hs.getUserInfo()
             auth_success = True

@@ -28,7 +28,7 @@ valid_status = ['public', 'private', 'discoverable']
 class Resource(object):
 
     def __init__(self, title, abstract, keywords, type,
-                 files=[], public="false", discoverable="false", 
+                 files=[], sharing_status='private', 
                  shareable="false", authors=[],
                  custom_metadata={}, file_metadata=[]):
         self.title = title
@@ -36,9 +36,8 @@ class Resource(object):
         self.keywords = keywords
         self.type = type
         self.files = files
-        self.public = public
+        self.sharing_status = sharing_status
         self.shareable = shareable
-        self.discoverable = discoverable
 #        self.unzip_files = unzip_files
         self.authors = authors
         self.custom_metadata = custom_metadata
@@ -72,9 +71,10 @@ class Resource(object):
                                         % (','.join(valid_resource_types)))
         else:
             self.type = valid_resource_types[self.type.lower()]
-
-        self.public = bool(self.public)
-        self.discoverable = bool(self.discoverable)
+        
+        if self.sharing_status.lower() not in valid_status:
+            self.validation_text.append('Invalid sharing status: %s'
+                                        % self.sharing_status)
         self.shareable = bool(self.shareable)
 
         if type(self.files) != list:
@@ -89,12 +89,12 @@ class Resource(object):
             else:
                 f['type'] = valid_file_types[f['type'].lower()]
 
-        file_paths = [f['path'] for f in self.files]
+        file_uids = [f['uid'] for f in self.files]
         for f in self.filemeta:
-            if f['path'] != '' and f['path'] not in file_paths:
+            if f['uid'] not in file_uids:
                 self.validation_text.append('cannot add metadata for file that'
                                             ' is not part of the resource: %s'
-                                            % f['path'])
+                                            % f['uid'])
             if f['coverage'] != '':
                 if f['coverage'].lower() not in ['point', 'box']:
                     self.validation_text.append('invalid coverage: %s' %
@@ -127,6 +127,15 @@ class Resource(object):
                                                 'required if coverage type '
                                                 'has been specified')
                 f['spatial_def'] = spatialdef
+
+            # find file that this metadata is associated with
+            import pdb; pdb.set_trace()
+            for file in self.files:
+                if file['uid'] == f['uid']:
+                    file['metadata'] = f
+                    break
+
+#                self.files['metadata'] = f
 
     def isvalid(self):
         self.validation_text = []
@@ -179,12 +188,19 @@ class Resource(object):
                     {'k': 'Abstract', 'v': self.abstract},
                     {'k': 'Keywords', 'v': ','.join(self.keywords)},
                     {'k': 'Type', 'v': self.type},
-                    {'k': 'Public', 'v': self.public},
-                    {'k': 'Discoverable', 'v': self.discoverable},
+                    {'k': 'Sharing Status', 'v': self.sharing_status},
                     {'k': 'Sharable', 'v': self.shareable}]
         self.print_table('General Metadata', gen_meta,
                          headers=['Key', 'Value'])
-        self.print_table('Resource Content', self.files)
+        files_abbv = []
+        for item in self.files:
+            d_abbv = {}
+            for k, v in item.items():
+                if k != 'metadata':
+                    d_abbv[k] = v
+            files_abbv.append(d_abbv)
+
+        self.print_table('Resource Content', files_abbv)
 
         filemeta_list = self.to_dict_list(self.filemeta)
         self.print_multi_table('File Metadata', filemeta_list,
