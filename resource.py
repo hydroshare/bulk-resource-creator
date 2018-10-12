@@ -129,7 +129,6 @@ class Resource(object):
                 f['spatial_def'] = spatialdef
 
             # find file that this metadata is associated with
-            import pdb; pdb.set_trace()
             for file in self.files:
                 if file['uid'] == f['uid']:
                     file['metadata'] = f
